@@ -1,7 +1,7 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 const port = process.env.PORT || 5000;
 
@@ -27,7 +27,7 @@ async function run() {
 
     const watchListCollection = client.db("cineFlexDb").collection("watchlist");
 
-    // watchlist collection
+    // watchlist collection api's
     app.get("/watchlist", async (req, res) => {
       const email = req.query.email;
 
@@ -42,6 +42,22 @@ async function run() {
 
     app.post("/watchlist", async (req, res) => {
       const watchListItem = req.body;
+      const query = {
+        tmdbId: watchListItem.tmdbId,
+        email: watchListItem.email,
+        media_type: watchListItem.media_type,
+        $or: [
+          { tmdbId: watchListItem.tmdbId },
+          { email: watchListItem.email.toLowerCase() },
+          { media_type: watchListItem.media_type.toLowerCase() },
+        ],
+      };
+
+      const existingItem = await watchListCollection.findOne(query);
+      if (existingItem) {
+        return res.send({ message: "already exists" });
+      }
+
       const result = await watchListCollection.insertOne(watchListItem);
       res.send(result);
     });
